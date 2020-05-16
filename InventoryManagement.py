@@ -6,7 +6,7 @@ from tkinter.filedialog import askopenfile
 from PollyReports import *
 from reportlab.pdfgen.canvas import Canvas
 import os
-import datetime
+from datetime import date
 
 Home = Tk()
 Home.title("Inventory Management System")
@@ -21,6 +21,7 @@ Home.resizable(0, 0)
 
 #========================================VARIABLES========================================
 NAME = StringVar()
+INVENTORYNUMBER = StringVar()
 LEDGERNUMBER = StringVar()
 LEDGERPAGENUMBER = StringVar()
 PAGENUMBER = IntVar()
@@ -70,7 +71,7 @@ def ResetAllEntries():
     RIVNUMBER.set("")
     CONDEMNEDNUMBER.set("")
     ISINSTALLED.set(0)
-
+    DATE.set(datetime.strftime(date.today(),"%d\%m\%Y"))
     #Reset extra details
     NAMEFILTER.set("")
     ITEMFILTER.set("")
@@ -83,14 +84,14 @@ def Database(section):
     conn = sqlite3.connect(f"{SECTION.get()}.db")
     cursor = conn.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS LogTableInfo (IndexId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                      Name TEXT, LedgerNumber TEXT, LedgerPageNumber TEXT, PageNumber INTEGER, ItemName TEXT,
-                     Quantity INTEGER, Date TEXT, Type TEXT, Balance INTEGER, Section TEXT)""")
-    cursor.execute("""CREATE TABLE IF NOT EXISTS InventTable (Section TEXT, LedgerNumber TEXT,
+                      Name TEXT, InventoryNumber TEXT, PageNumber INTEGER, ItemName TEXT,
+                     Quantity INTEGER, Date TEXT, Type TEXT, Balance INTEGER)""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS InventTable (InventoryNumber TEXT, LedgerNumber TEXT,
                       LedgerPageNumber TEXT, PageNumber INTEGER, ItemName TEXT, AttachedFiles TEXT,
                       Quantity INTEGER, Balance INTEGER, ItemCost FLOAT, CRVNumber TEXT, RIVNumber TEXT,
                       ItemType TEXT, CondemnedNumber TEXT,PRIMARY KEY (LedgerNumber, LedgerPageNumber, PageNumber))""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS UserInfo (IndexId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                      FirstName TEXT, LastName TEXT, Designation TEXT, Section TEXT)""")
+                      FirstName TEXT, LastName TEXT, Designation TEXT)""")
     conn.commit()
         
 def PrintInventoryDetails():
@@ -109,7 +110,7 @@ def PrintInventoryDetails():
 
 def PrintingDetails():
     ResetAllEntries()
-    global ledgerpagenumber, pagenumber
+    global pagenumber
     TopPrintingDetails = Frame(printinventorydetails, width=600, height=100, bd=1, relief=SOLID)
     TopPrintingDetails.pack(side=TOP, pady=20)
     MidPrintingDetails = Frame(printinventorydetails, width=600)
@@ -117,75 +118,51 @@ def PrintingDetails():
     lbl_text = Label(TopPrintingDetails, text="Print", font=('arial', 18), width=600)
     lbl_text.pack(fill=X)
     lbl_result = Label(MidPrintingDetails, textvariable=RESULT, font=('arial', 10), bd=10, fg="red")
-    lbl_result.grid(row=4, columnspan=2)
-    lbl_ledgernumber = Label(MidPrintingDetails, text="Ledger number:", font=('arial', 16), bd=10)
+    lbl_result.grid(row=3, columnspan=2)
+    lbl_inventorynumber = Label(MidPrintingDetails, text="Inventory number:", font=('arial', 16), bd=10)
     lbl_ledgernumber.grid(row=0, sticky=W)
-    lbl_ledgerpagenumber = Label(MidPrintingDetails, text="Ledger page number:", font=('arial', 16), bd=10)
-    lbl_ledgerpagenumber.grid(row=1, sticky=W)
-    lbl_pagenumber = Label(MidPrintingDetails, text="Page number:", font=('arial', 16), bd=10)
-    lbl_pagenumber.grid(row=2, sticky=W)
-    ledgernumber = ttk.Combobox(MidPrintingDetails, values = LedgerNumber(), textvariable=LEDGERNUMBER, font=('arial', 16), width=15)
-    ledgernumber.bind("<<ComboboxSelected>>", LedgerNumberSelection)
-    ledgernumber.grid(row=0, column=1)
-    ledgerpagenumber = ttk.Combobox(MidPrintingDetails, values = [], textvariable=LEDGERPAGENUMBER, font=('arial', 16), width=15)
-    ledgerpagenumber.bind("<<ComboboxSelected>>", LedgerPageNumberSelection)
-    ledgerpagenumber.grid(row=1, column=1)
+    lbl_pagenumber = Label(MidPrintingDetails, text="Inventory page number:", font=('arial', 16), bd=10)
+    lbl_pagenumber.grid(row=1, sticky=W)
+    inventorynumber = ttk.Combobox(MidPrintingDetails, values = InventoryNumber(), textvariable=INVENTORYNUMBER, font=('arial', 16), width=15)
+    inventorynumber.bind("<<ComboboxSelected>>", InventoryNumberSelection)
+    inventorynumber.grid(row=0, column=1)
     pagenumber = ttk.Combobox(MidPrintingDetails, values = [], textvariable=PAGENUMBER, font=('arial', 16), width=15)
-    pagenumber.grid(row=2, column=1)
+    pagenumber.grid(row=1, column=1)
     btn_add = Button(MidPrintingDetails, text="Print", font=('arial', 16), width=30, bg="#009ACD", command=PrintData)
-    btn_add.grid(row=3, columnspan=2, pady=20)
+    btn_add.grid(row=2, columnspan=2, pady=20)
     
-def LedgerNumberSelection(event = None):
-    if(LEDGERNUMBER.get()!=""):
-        LEDGERPAGENUMBER.set("")
+def InventoryNumberSelection(event = None):
+    if(INVENTORYNUMBER.get()!=""):
         PAGENUMBER.set(0)
         Database(SECTION.get())
-        cursor.execute(f"""SELECT DISTINCT LedgerPageNumber FROM InventTable 
-                           WHERE LedgerNumber = '{LEDGERNUMBER.get()}' and Section = '{SECTION.get()}'""")
+        cursor.execute(f"SELECT PageNumber FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}'")
         fetch = cursor.fetchall()
-        ledgerpagenumbers = ["{}".format(data[0]) for data in fetch]
-        ledgerpagenumber['values'] = ledgerpagenumbers
-        cursor.close()
-        conn.close()
-
-def LedgerPageNumberSelection(event = None):
-    if(LEDGERNUMBER.get()!="" and LEDGERPAGENUMBER.get()!=""):
-        PAGENUMBER.set(0)
-        Database(SECTION.get())
-        cursor.execute(f"""SELECT DISTINCT PageNumber FROM InventTable 
-                           WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}'
-                           and LedgerPageNumber = '{LEDGERPAGENUMBER.get()}'""")
-        fetch = cursor.fetchall()
-        pagenumbers = ["{}".format(data[0]) for data in fetch]
-        pagenumber['values'] = pagenumbers
+        pagenumber['values'] = ["{}".format(data[0]) for data in fetch]
         cursor.close()
         conn.close()
 
 def PrintData():
     Database(SECTION.get())
-    if(LEDGERNUMBER.get()!=""):
-        if(LEDGERPAGENUMBER.get()!=""):
-            if(PAGENUMBER.get()!=None and PAGENUMBER.get() > 0):    PrintPageNumber()
-            else:   PrintLedgerPageNumber()
-        else:   PrintLedgerNumber()
+    if(INVENTORYNUMBER.get()!=""):
+        if(PAGENUMBER.get()!=None and PAGENUMBER.get() > 0):
+            PrintPageNumber()
+        else:   
+            PrintInventoryNumber()
         ResetAllEntries()
         RESULT.set("Successful")
-    else:   RESULT.set("Please select ledger number")
+    else:
+        RESULT.set("Please select inventory number")
     cursor.close()
     conn.close()
 
 
 #Print data for one page number
 def PrintPageNumber():
-    cursor.execute(f"""SELECT * FROM LogTableInfo 
-                       WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}' 
-                       and LedgerPageNumber = '{LEDGERPAGENUMBER.get()}' and PageNumber = {PAGENUMBER.get()} ORDER BY Date""")
+    cursor.execute(f"SELECT * FROM LogTableInfo WHERE InventoryNumber = '{INVENTORYNUMBER.get()}' and PageNumber = {PAGENUMBER.get()}")
     columns = [col[0] for col in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     if(len(rows) == 0): rows = [{"Name":"-","Date":"-","Quantity":"-","Type":"-","Balance":"-"}]
-    cursor.execute(f"""SELECT * FROM InventTable 
-                       WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}' 
-                       and LedgerPageNumber = '{LEDGERPAGENUMBER.get()}' and PageNumber = {PAGENUMBER.get()}""")
+    cursor.execute(f"SELECT * FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}' and PageNumber = {PAGENUMBER.get()}")
     fetch = cursor.fetchone()
     rpt = Report(datasource = rows, detailband = Band([
     Element((0, 10), ("Helvetica", 8), key = "Name"),
@@ -193,11 +170,6 @@ def PrintPageNumber():
     Element((280, 10), ("Helvetica", 8), key = "Quantity"),
     Element((360, 10), ("Helvetica", 8), key = "Type"),
     Element((440, 10), ("Helvetica", 8), key = "Balance")]))
-    #cursor.execute("""CREATE TABLE IF NOT EXISTS InventTable (Section TEXT, LedgerNumber TEXT,
-    #                  LedgerPageNumber TEXT, PageNumber INTEGER, ItemName TEXT, AttachedFiles TEXT,
-    #                  Quantity INTEGER, Balance INTEGER, ItemCost FLOAT, CRVNumber TEXT, RIVNumber TEXT,
-    #                  ItemType TEXT, DateOfPurchase DATE, DateOfInstallation DATE, IsInstalled INTEGER,
-    #                  CondemnedNumber TEXT,PRIMARY KEY (LedgerNumber, LedgerPageNumber, PageNumber))""")
     rpt.pageheader = Band([
     Element((0, 0), ("Times-Bold", 10), text = "Ledger Number:"), 
     Element((90, 0), ("Helvetica", 8), text = "{}".format(LEDGERNUMBER.get())),
@@ -228,59 +200,33 @@ def PrintPageNumber():
     Element((440, 128), ("Helvetica", 8), text = "Balance"),
     Rule((0, 141), 7.5*72, thickness = 1)])
     desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    canvas = Canvas("{}\\{}_{}_{}.pdf".format(desktop_path.replace('\\','\\\\'),LEDGERNUMBER.get(),LEDGERPAGENUMBER.get(),PAGENUMBER.get()))
+    canvas = Canvas("{}\\{}_{}.pdf".format(desktop_path.replace('\\','\\\\'),INVENTORYNUMBER.get(),PAGENUMBER.get()))
     rpt.generate(canvas)
     canvas.save()
 
-def PrintLedgerPageNumber():
-    cursor.execute(f"SELECT * FROM InventTable WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}' and LedgerPageNumber = '{LEDGERPAGENUMBER.get()}'")
+def PrintInventoryNumber():
+    cursor.execute(f"SELECT * FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}'")
     columns = [col[0] for col in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     for i in range(0,len(rows)):
-        if(len(rows[i]['ItemName'])>40): rows[i]['ItemName'] = rows[i]['ItemName'][:40]
+        if(len(rows[i]['ItemName'])>100): rows[i]['ItemName'] = rows[i]['ItemName'][:100]
     rpt = Report(datasource = rows, detailband = Band([
     Element((0, 10), ("Helvetica", 8), key = "ItemName"),
     Element((200, 10), ("Helvetica", 8), key = "PageNumber"),
-    Element((280, 10), ("Helvetica", 8), key = "Quantity"),
-    Element((360, 10), ("Helvetica", 8), key = "Balance")]))
+    Element((280, 10), ("Helvetica", 8), key = "Quantity")]))
     rpt.pageheader = Band([
-    Element((0, 0), ("Times-Bold", 10), text = "Ledger Number:"),
-    Element((100, 0), ("Helvetica", 8), text = "{}".format(LEDGERNUMBER.get())),
-    Element((300, 0), ("Times-Bold", 10), text = "Ledger Page Number:"),
-    Element((400, 0), ("Helvetica", 8), text = "{}".format(LEDGERPAGENUMBER.get())),
+    Element((0, 0), ("Times-Bold", 10), text = "Inventory number:"),
+    Element((100, 0), ("Helvetica", 8), text = "{}".format(INVENTORYNUMBER.get())),
     Element((0, 20), ("Helvetica", 8), text = "Item name"),
     Element((200, 20), ("Helvetica", 8), text = "Page number"),
     Element((280, 20), ("Helvetica", 8), text = "Quantity"),
     Element((360, 20), ("Helvetica", 8), text = "Balance"),
     Rule((0, 32), 7.5*72, thickness = 1)])
     desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    canvas = Canvas("{}\\{}_{}.pdf".format(desktop_path.replace('\\','\\\\'),LEDGERNUMBER.get(),LEDGERPAGENUMBER.get()))
+    canvas = Canvas("{}\\{}.pdf".format(desktop_path.replace('\\','\\\\'),INVENTORYNUMBER.get()))
     rpt.generate(canvas)
     canvas.save()
 
-def PrintLedgerNumber():
-    cursor.execute(f"SELECT * FROM InventTable WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}' ORDER BY LedgerPageNumber, PageNumber")
-    columns = [col[0] for col in cursor.description]
-    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    for i in range(0,len(rows)):
-        if(len(rows[i]['ItemName'])>40): rows[i]['ItemName'] = rows[i]['ItemName'][:40]
-    rpt = Report(datasource = rows, detailband = Band([
-    Element((0, 10), ("Helvetica", 8), key = "ItemName"),
-    Element((200, 10), ("Helvetica", 8), key = "LedgerPageNumber"),
-    Element((300, 10), ("Helvetica", 8), key = "PageNumber"),
-    Element((360, 10), ("Helvetica", 8), key = "Quantity")]))
-    rpt.pageheader = Band([
-    Element((0, 0), ("Times-Bold", 12), text = "Ledger Number:"),
-    Element((100, 0), ("Helvetica", 10), text = f"{LEDGERNUMBER.get()}"),
-    Element((0, 20), ("Helvetica", 8), text = "Item name"),
-    Element((200, 20), ("Helvetica", 8), text = "Ledger page no."),
-    Element((300, 20), ("Helvetica", 8), text = "Page number"),
-    Element((360, 20), ("Helvetica", 8), text = "Quantity"),
-    Rule((0, 32), 7.5*72, thickness = 1)])
-    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    canvas = Canvas("{}\\{}.pdf".format(desktop_path.replace('\\','\\\\'),LEDGERNUMBER.get()))
-    rpt.generate(canvas)
-    canvas.save()
 #========================================INVENTORY FORM===================================
 
 def ShowItemNew():
@@ -305,77 +251,74 @@ def ItemNewForm():
     MidItemNew.pack(side=TOP, pady=10)
     lbl_text = Label(TopItemNew, text="New item", font=('arial', 14), width=600)
     lbl_text.pack(fill=X)
-    lbl_ledgernumber = Label(MidItemNew, text="Ledger:", font=('arial', 12), bd=10)
-    lbl_ledgernumber.grid(row=2, sticky=W)
+    lbl_inventorynumber = Label(MidItemNew, text="Inventory number:", font=('arial', 12), bd=10)
+    lbl_inventorynumber.grid(row=0, sticky=W)
+    lbl_ledgernumber = Label(MidItemNew, text="Ledger number:", font=('arial', 12), bd=10)
+    lbl_ledgernumber.grid(row=3, sticky=W)
     lbl_ledgerpagenumber = Label(MidItemNew, text="Ledger page number:", font=('arial', 12), bd=10)
-    lbl_ledgerpagenumber.grid(row=0, sticky=W)
+    lbl_ledgerpagenumber.grid(row=1, sticky=W)
     lbl_pagenumber = Label(MidItemNew, text="Inventory page number:", font=('arial', 12), bd=10)
-    lbl_pagenumber.grid(row=1, sticky=W)
+    lbl_pagenumber.grid(row=2, sticky=W)
     lbl_itemname = Label(MidItemNew, text="Item name:", font=('arial', 12), bd=10)
-    lbl_itemname.grid(row=4, sticky=W)
+    lbl_itemname.grid(row=5, sticky=W)
     lbl_attachfile = Label(MidItemNew, text="Attach file:", font=('arial', 12), bd=10)
-    lbl_attachfile.grid(row=5, sticky=W)
+    lbl_attachfile.grid(row=6, sticky=W)
     lbl_quantity = Label(MidItemNew, text="Quantity:", font=('arial', 12), bd=10)
-    lbl_quantity.grid(row=6, sticky=W)
+    lbl_quantity.grid(row=7, sticky=W)
     lbl_itemcost = Label(MidItemNew, text="Item cost:", font=('arial', 12), bd=10)
-    lbl_itemcost.grid(row=3, sticky=W)
+    lbl_itemcost.grid(row=4, sticky=W)
     lbl_rivnumber = Label(MidItemNew, text="R / IV number:", font=('arial', 12), bd=10)
-    lbl_rivnumber.grid(row=7, sticky=W)
+    lbl_rivnumber.grid(row=8, sticky=W)
     lbl_crvnumber = Label(MidItemNew, text="CRV number:", font=('arial', 12), bd=10)
-    lbl_crvnumber.grid(row=8, sticky=W)
+    lbl_crvnumber.grid(row=9, sticky=W)
     lbl_itemtype = Label(MidItemNew, text="Item Type:", font=('arial', 12), bd=10)
-    lbl_itemtype.grid(row=9, sticky=W)
+    lbl_itemtype.grid(row=10, sticky=W)
     lbl_condemnednumber = Label(MidItemNew, text="Condemned number:", font=('arial', 12), bd=10)
     lbl_condemnednumber.grid(row=12, sticky=W)
     lbl_result = Label(MidItemNew, textvariable=RESULT, font=('arial', 8), bd=10, fg="red")
-    lbl_result.grid(row=14, columnspan = 2)
+    lbl_result.grid(row=13, columnspan = 2)
 
+    inventorynumber = Entry(MidItemNew, textvariable = INVENTORYNUMBER, font=('arial', 12), width=15)
+    inventorynumber.grid(row=0, column=1)
     ledgerpagenumber = Entry(MidItemNew, textvariable = LEDGERPAGENUMBER, font=('arial', 12), width=15)
-    ledgerpagenumber.grid(row=0, column=1)
+    ledgerpagenumber.grid(row=1, column=1)
     pagenumber = Entry(MidItemNew, textvariable = PAGENUMBER, font=('arial', 12), width=15)
-    pagenumber.grid(row=1, column=1)
+    pagenumber.grid(row=2, column=1)
     ledgernumber = Entry(MidItemNew, textvariable = LEDGERNUMBER, font=('arial', 12), width=15)
-    ledgernumber.grid(row=2, column=1)
+    ledgernumber.grid(row=3, column=1)
     itemcost = Entry(MidItemNew, textvariable = ITEMCOST, font=('arial', 12), width=15)
-    itemcost.grid(row=3, column=1)
+    itemcost.grid(row=4, column=1)
     itemname = Entry(MidItemNew, textvariable = ITEMNAME, font=('arial', 12), width=15)
-    itemname.grid(row=4, column=1)
+    itemname.grid(row=5, column=1)
     btn_attachfile = Button(MidItemNew, text="Attach", font=('arial', 8), width=10, bg="#009ACD", command=AttachFile)
-    btn_attachfile.grid(row=5, column=1)
+    btn_attachfile.grid(row=6, column=1)
     quantity = Entry(MidItemNew, textvariable = QUANTITY, font=('arial', 12), width=15)
-    quantity.grid(row=6, column=1)
+    quantity.grid(row=7, column=1)
     rivnumber = Entry(MidItemNew, textvariable = RIVNUMBER, font=('arial', 12), width=15)
-    rivnumber.grid(row=7, column=1)
+    rivnumber.grid(row=8, column=1)
     crvnumber = Entry(MidItemNew, textvariable = CRVNUMBER, font=('arial', 12), width=15)
-    crvnumber.grid(row=8, column=1)
+    crvnumber.grid(row=9, column=1)
     itemtype = ttk.Combobox(MidItemNew, textvariable = ITEMTYPE, values = ["Consumable", "Non-Consumable", "NCF"], font=('arial', 12), width=15)
-    itemtype.grid(row=9, column=1)
+    itemtype.grid(row=10, column=1)
     condemnednumber = Entry(MidItemNew, textvariable = CONDEMNEDNUMBER, font=('arial', 12), width=15)
-    condemnednumber.grid(row=12, column=1)
+    condemnednumber.grid(row=11, column=1)
     btn_add = Button(MidItemNew, text="Save", font=('arial', 10), width=30, bg="#009ACD", command=ItemNew)
-    btn_add.grid(row=13, columnspan=2, pady=10)
+    btn_add.grid(row=12, columnspan=2, pady=10)
 
 def ItemNew():
     Database(SECTION.get())
     LEDGERNUMBER.set(LEDGERNUMBER.get().strip())
     LEDGERPAGENUMBER.set(LEDGERPAGENUMBER.get().strip())
+    INVENTORYNUMBER.set(INVENTORYNUMBER.get().strip())
     if(LEDGERNUMBER.get()!="" and LEDGERPAGENUMBER.get()!="" and PAGENUMBER.get()!=None and PAGENUMBER.get()>0 and ITEMNAME.get()!="" 
-      and QUANTITY.get()!=None and QUANTITY.get()>0 and ITEMTYPE.get()!=""):
-        cursor.execute(f"""SELECT * FROM InventTable
-        WHERE Section = '{SECTION.get()}' and LedgerNumber = '{LEDGERNUMBER.get()}' 
-        and LedgerPageNumber = '{LEDGERPAGENUMBER.get()}' and PageNumber = {PAGENUMBER.get()}""")
-        if(cursor.fetchone() is None):
-            cursor.execute("""INSERT INTO InventTable 
-            (Section, LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, ItemType,
-            AttachedFiles, RIVNumber, CRVNumber, IsInstalled, CondemnedNumber) 
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (SECTION.get(), LEDGERNUMBER.get(), LEDGERPAGENUMBER.get(), PAGENUMBER.get(), ITEMNAME.get(), QUANTITY.get(), QUANTITY.get(),
-            ITEMCOST.get(), ITEMTYPE.get(), ATTACHEDFILE.get(), RIVNUMBER.get(), CRVNUMBER.get(), CONDEMNEDNUMBER.get()))
-            conn.commit()
-            ResetAllEntries()
-            RESULT.set("Success")
-        else: 
-            RESULT.set("Item already exists")
+      and QUANTITY.get()!=None and QUANTITY.get()>0 and ITEMTYPE.get()!="" and INVENTORYNUMBER.get()!=""):
+        cursor.execute("""INSERT INTO InventTable (InventoryNumber, LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, ItemType,
+        AttachedFiles, RIVNumber, CRVNumber, IsInstalled, CondemnedNumber) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (INVENTORYNUMBER.get(), LEDGERNUMBER.get(), LEDGERPAGENUMBER.get(), PAGENUMBER.get(), ITEMNAME.get(), QUANTITY.get(), QUANTITY.get(),
+        ITEMCOST.get(), ITEMTYPE.get(), ATTACHEDFILE.get(), RIVNUMBER.get(), CRVNUMBER.get(), CONDEMNEDNUMBER.get()))
+        conn.commit()
+        ResetAllEntries()
+        RESULT.set("Success")
     else: 
         RESULT.set("Please enter all details")
     cursor.close()
@@ -435,7 +378,7 @@ def UserNew():
     LASTNAME.set(LASTNAME.get().strip())
     DESIGNATION.set(DESIGNATION.get().strip())
     if(FIRSTNAME.get()!="" and LASTNAME.get()!="" and DESIGNATION.get()!=""):
-        cursor.execute("INSERT INTO UserInfo (Section, FirstName, LastName, Designation) VALUES(?, ?, ?, ?)", (SECTION.get(), FIRSTNAME.get(), LASTNAME.get(), DESIGNATION.get()))
+        cursor.execute("INSERT INTO UserInfo (FirstName, LastName, Designation) VALUES(?, ?, ?, ?)", (FIRSTNAME.get(), LASTNAME.get(), DESIGNATION.get()))
         conn.commit()
         ResetAllEntries()
     else:
@@ -521,11 +464,11 @@ def IssueNew():
         if(Delta.days <= 0):
             newbalance = BALANCE.get() - QUANTITY.get()
             if(newbalance >= 0):
-                cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber FROM InventTable WHERE Section = '{SECTION.get()}' and ItemName = '{ITEMNAME.get()}' and Balance = {BALANCE.get()}")
+                cursor.execute(f"SELECT InventoryNumber, PageNumber FROM InventTable WHERE ItemName = '{ITEMNAME.get()}' and Balance = {BALANCE.get()}")
                 data = cursor.fetchone()
-                cursor.execute("UPDATE InventTable SET Balance = {} WHERE LedgerNumber = '{}' and LedgerPageNumber = '{}' and PageNumber = {} and Section = '{}'".format(newbalance, data[0], data[1], data[2], SECTION.get()))
-                cursor.execute("INSERT INTO LogTableInfo (Name, Date, ItemName, LedgerNumber, LedgerPageNumber, PageNumber, Quantity, Type, Balance, Section) VALUES(?, ?, ?, ?, ?, ?, ?, 'Issued', ?,?)",
-                          (NAME.get(), DATE.get(), ITEMNAME.get(), data[0], data[1], data[2], QUANTITY.get(), newbalance, SECTION.get()))
+                cursor.execute("UPDATE InventTable SET Balance = {} WHERE InventoryNumber = '{}' and PageNumber = {}".format(newbalance, data[0], data[1]))
+                cursor.execute("INSERT INTO LogTableInfo (Name, Date, ItemName, InventoryNumber, PageNumber, Quantity, Type, Balance) VALUES(?, ?, ?, ?, ?, ?, 'Issued', ?)",
+                          (NAME.get(), DATE.get(), ITEMNAME.get(), data[0], data[1], QUANTITY.get(), newbalance))
                 conn.commit()
                 ResetAllEntries()
             else: 
@@ -599,11 +542,11 @@ def ReturnNew():
     if(ITEMNAME.get()!= "" and NAME.get()!="" and QUANTITY.get() != None and QUANTITY.get()>0):
         if(Delta.days <= 0):
             newbalance = BALANCE.get() + QUANTITY.get()
-            cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber FROM InventTable WHERE ItemName = '{ITEMNAME.get()}' and Balance = {BALANCE.get()}")
+            cursor.execute(f"SELECT InventoryNumber, PageNumber FROM InventTable WHERE ItemName = '{ITEMNAME.get()}' and Balance = {BALANCE.get()}")
             data = cursor.fetchone()
-            cursor.execute("UPDATE InventTable SET Balance = {} WHERE LedgerNumber = '{}' and LedgerPageNumber = '{}' and PageNumber = {} and Section = '{}'".format(newbalance, data[0], data[1], data[2], SECTION.get()))
-            cursor.execute("INSERT INTO LogTableInfo (Name, Date, LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Type, Balance, Section) VALUES(?, ?, ?, ?, ?, ?, ?, 'Returned', ?, ?)",
-                      (NAME.get(), DATE.get(), data[0], data[1], data[2], ITEMNAME.get(), QUANTITY.get(), newbalance, SECTION.get()))
+            cursor.execute("UPDATE InventTable SET Balance = {} WHERE InventoryNumber = '{}' and PageNumber = {}".format(newbalance, data[0], data[1]))
+            cursor.execute("INSERT INTO LogTableInfo (Name, Date, InventoryNumber, PageNumber, ItemName, Quantity, Type, Balance) VALUES(?, ?, ?, ?, ?, ?, 'Returned', ?)",
+                      (NAME.get(), DATE.get(), data[0], data[1], ITEMNAME.get(), QUANTITY.get(), newbalance))
             conn.commit()
             ResetAllEntries()
         else: ERROR.set("Cannot be returned for future dates")
@@ -613,7 +556,7 @@ def ReturnNew():
 
 def Names():
     Database(SECTION.get())
-    cursor.execute(f"SELECT FirstName, LastName, Designation FROM userInfo WHERE FirstName LIKE '{NAMEFILTER.get()}%' and Section = '{SECTION.get()}'")
+    cursor.execute(f"SELECT FirstName, LastName, Designation FROM userInfo WHERE FirstName LIKE '{NAMEFILTER.get()}%'")
     fetch = cursor.fetchall()
     list = ["{} {}/{}".format(data[0], data[1], data[2]) for data in fetch]
     cursor.close()
@@ -622,21 +565,13 @@ def Names():
 
 def Items():
     Database(SECTION.get())
-    cursor.execute(f"SELECT ItemName, Balance FROM InventTable WHERE ItemName LIKE '{ITEMFILTER.get()}%' and Section = '{SECTION.get()}'")
+    cursor.execute(f"SELECT ItemName, Balance FROM InventTable WHERE ItemName LIKE '{ITEMFILTER.get()}%'")
     fetch = cursor.fetchall()
     list = ["{}/Balance:{}".format(data[0], data[1]) for data in fetch]
     cursor.close()
     conn.close()
     return list
 
-def LedgerNumber():
-    Database(SECTION.get())
-    cursor.execute(f"SELECT DISTINCT LedgerNumber FROM InventTable WHERE Section = '{SECTION.get()}'")
-    fetch = cursor.fetchall()
-    list = ["{}".format(data[0]) for data in fetch]
-    cursor.close()
-    conn.close()
-    return list
 #========================================LOG VIEW FORM===================================
 
 def LogForm():
@@ -687,8 +622,7 @@ def LogForm():
 def DisplayData(event = None):
     Database(SECTION.get())
     tree.delete(*tree.get_children())
-    if(COMBOBOX.get()!="All" or COMBOBOX.get()!=""): cursor.execute(f"SELECT Name, Date, ItemName, Quantity, Type, Balance FROM LogTableInfo WHERE Type = '{COMBOBOX.get()}' and Section = '{SECTION.get()}'")
-    else: cursor.execute(f"SELECT Name, Date, ItemName, Quantity, Type, Balance FROM LogTableInfo WHERE Section = '{SECTION.get()}'")
+    cursor.execute(f"SELECT Name, Date, ItemName, Quantity, Type, Balance FROM LogTableInfo WHERE Type = '{COMBOBOX.get()}'") if (COMBOBOX.get()!="All" or COMBOBOX.get()!="") else cursor.execute(f"SELECT Name, Date, ItemName, Quantity, Type, Balance FROM LogTableInfo")
     fetch = cursor.fetchall()
     for data in fetch:
         tree.insert('', 'end', values=(data))
@@ -739,7 +673,7 @@ def UserForm():
 def UserDisplayData(event = None):
     Database(SECTION.get())
     usertree.delete(*usertree.get_children())
-    cursor.execute(f"SELECT * FROM UserInfo WHERE Section = '{SECTION.get()}'")
+    cursor.execute(f"SELECT * FROM UserInfo")
     fetch = cursor.fetchall()
     for data in fetch:
         usertree.insert('', 'end', values=(data))
@@ -774,12 +708,13 @@ def InventoryForm():
     btn_edit.pack(side=TOP, padx=10, pady=10, fill=X)
     scrollbarx = Scrollbar(MidInventoryForm, orient=HORIZONTAL)
     scrollbary = Scrollbar(MidInventoryForm, orient=VERTICAL)
-    inventorytree = ttk.Treeview(MidInventoryForm, columns=("Ledger number", "Ledger page number", "Page number", "Item name", "Quantity", "Balance", 
+    inventorytree = ttk.Treeview(MidInventoryForm, columns=("Inventory number", "Ledger number", "Ledger page number", "Page number", "Item name", "Quantity", "Balance", 
                     "Item cost", "RIV number", "CRV number", "Item type", "Attached files", "Condemned number"), selectmode="extended", height=100, yscrollcommand=scrollbary.set, xscrollcommand=scrollbarx.set)
     scrollbary.config(command=inventorytree.yview)
     scrollbary.pack(side=RIGHT, fill=Y)
     scrollbarx.config(command=inventorytree.xview)
     scrollbarx.pack(side=BOTTOM, fill=X)
+    inventorytree.heading('Inventory number', text="Inventory number",anchor=W)
     inventorytree.heading('Ledger number', text="Ledger number",anchor=W)
     inventorytree.heading('Ledger page number', text="Ledger page number",anchor=W)
     inventorytree.heading('Page number', text="Page number",anchor=W)
@@ -805,13 +740,14 @@ def InventoryForm():
     inventorytree.column('#10', stretch=NO, minwidth=0, width=100)
     inventorytree.column('#11', stretch=NO, minwidth=0, width=100)
     inventorytree.column('#12', stretch=NO, minwidth=0, width=100)
+    inventorytree.column('#13', stretch=NO, minwidth=0, width=100)
     inventorytree.pack()
     InventoryDisplayData()
 
 def InventoryDisplayData(event = None):
     Database(SECTION.get())
     inventorytree.delete(*inventorytree.get_children())
-    cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable WHERE Section = '{SECTION.get()}'")
+    cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable")
     fetch = cursor.fetchall()
     for data in fetch:
         inventorytree.insert('', 'end', values=(data))
@@ -858,7 +794,7 @@ def InventorySearch():
     if SEARCH.get() != "":
         inventorytree.delete(*inventorytree.get_children())
         Database(SECTION.get())
-        cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable WHERE ItemName LIKE '%{SEARCH.get()}% and Section = '{SECTION.get()}'")
+        cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable WHERE ItemName LIKE '%{SEARCH.get()}%'")
         fetch = cursor.fetchall()
         for data in fetch:
             inventorytree.insert('', 'end', values=(data))
@@ -881,7 +817,7 @@ def InventoryDelete():
             selecteditem = contents['values']
             inventorytree.delete(curItem)
             Database(SECTION.get())
-            cursor.execute(f"DELETE FROM InventTable WHERE LedgerNumber = '{selecteditem[0]}' and LedgerPageNumber = '{selecteditem[1]}' and PageNumber = {selecteditem[2]} and Section = '{SECTION.get()}'")
+            cursor.execute(f"DELETE FROM InventTable WHERE InventoryNumber = '{selecteditem[0]}' and PageNumber = {selecteditem[3]}")
             conn.commit()
             cursor.close()
             conn.close()
@@ -973,8 +909,8 @@ def ItemEdit():
     ITEMNAME.set(ITEMNAME.get().strip())
     if ITEMNAME.get()!="" and ITEMTYPE.get()!="":
         Database(SECTION.get())
-        cursor.execute("UPDATE InventTable SET ItemName = '{}', ItemCost = {}, ItemType = '{}', AttachedFiles = '{}', RIVNumber = '{}', CRVNumber = '{}', CondemnedNumber = '{}' WHERE LedgerNumber = '{}' and LedgerPageNumber = '{}'and PageNumber = {} and Section = '{}'"
-                       .format(ITEMNAME.get(), ITEMCOST.get(), ITEMTYPE.get(), ATTACHEDFILE.get(), RIVNUMBER.get(), CRVNUMBER.get(), CONDEMNEDNUMBER.get(), LEDGERNUMBER.get(), LEDGERPAGENUMBER.get(), PAGENUMBER.get(), SECTION.get()))
+        cursor.execute("UPDATE InventTable SET ItemName = '{}', ItemCost = {}, ItemType = '{}', AttachedFiles = '{}', RIVNumber = '{}', CRVNumber = '{}', CondemnedNumber = '{}' WHERE InventoryNumber = '{}'and PageNumber = {}"
+                       .format(ITEMNAME.get(), ITEMCOST.get(), ITEMTYPE.get(), ATTACHEDFILE.get(), RIVNUMBER.get(), CRVNUMBER.get(), CONDEMNEDNUMBER.get(), INVENTORYNUMBER.get(),PAGENUMBER.get()))
         conn.commit()
         cursor.close()
         conn.close()
@@ -992,7 +928,7 @@ def UserSearch():
     if SEARCH.get() != "":
         usertree.delete(*usertree.get_children())
         Database(SECTION.get())
-        cursor.execute(f"SELECT * FROM UserInfo WHERE FirstName LIKE '%{SEARCH.get()}% and Section = '{SECTION.get()}''")
+        cursor.execute(f"SELECT * FROM UserInfo WHERE FirstName LIKE '%{SEARCH.get()}%'")
         fetch = cursor.fetchall()
         for data in fetch:
             usertree.insert('', 'end', values=(data))
@@ -1015,7 +951,7 @@ def UserDelete():
             selecteditem = contents['values']
             usertree.delete(curItem)
             Database(SECTION.get())
-            cursor.execute(f"DELETE FROM UserInfo WHERE IndexId = {selecteditem[0]} and Section = '{SECTION.get()}'")
+            cursor.execute(f"DELETE FROM UserInfo WHERE IndexId = {selecteditem[0]}")
             conn.commit()
             cursor.close()
             conn.close()
@@ -1027,7 +963,7 @@ def Search():
     if SEARCH.get() != "":
         tree.delete(*tree.get_children())
         Database(SECTION.get())
-        cursor.execute(f"SELECT * FROM LogTableInfo WHERE Name LIKE '%{SEARCH.get()}%' and Section = '{SECTION.get()}'")
+        cursor.execute(f"SELECT * FROM LogTableInfo WHERE Name LIKE '%{SEARCH.get()}%'")
         fetch = cursor.fetchall()
         for data in fetch:
             tree.insert('', 'end', values=(data))
