@@ -6,7 +6,7 @@ from tkinter.filedialog import askopenfile
 from PollyReports import *
 from reportlab.pdfgen.canvas import Canvas
 import os
-from datetime import date
+from datetime import date,datetime
 
 Home = Tk()
 Home.title("Inventory Management System")
@@ -89,7 +89,7 @@ def Database(section):
     cursor.execute("""CREATE TABLE IF NOT EXISTS InventTable (InventoryNumber TEXT, LedgerNumber TEXT,
                       LedgerPageNumber TEXT, PageNumber INTEGER, ItemName TEXT, AttachedFiles TEXT,
                       Quantity INTEGER, Balance INTEGER, ItemCost FLOAT, CRVNumber TEXT, RIVNumber TEXT,
-                      ItemType TEXT, CondemnedNumber TEXT,PRIMARY KEY (LedgerNumber, LedgerPageNumber, PageNumber))""")
+                      ItemType TEXT, CondemnedNumber TEXT,PRIMARY KEY (InventoryNumber, PageNumber))""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS UserInfo (IndexId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                       FirstName TEXT, LastName TEXT, Designation TEXT)""")
     conn.commit()
@@ -120,26 +120,24 @@ def PrintingDetails():
     lbl_result = Label(MidPrintingDetails, textvariable=RESULT, font=('arial', 10), bd=10, fg="red")
     lbl_result.grid(row=3, columnspan=2)
     lbl_inventorynumber = Label(MidPrintingDetails, text="Inventory number:", font=('arial', 16), bd=10)
-    lbl_ledgernumber.grid(row=0, sticky=W)
+    lbl_inventorynumber.grid(row=0, sticky=W)
     lbl_pagenumber = Label(MidPrintingDetails, text="Inventory page number:", font=('arial', 16), bd=10)
     lbl_pagenumber.grid(row=1, sticky=W)
-    inventorynumber = ttk.Combobox(MidPrintingDetails, values = InventoryNumber(), textvariable=INVENTORYNUMBER, font=('arial', 16), width=15)
-    inventorynumber.bind("<<ComboboxSelected>>", InventoryNumberSelection)
+    inventorynumber = Label(MidPrintingDetails, textvariable=INVENTORYNUMBER, font=('arial', 16), width=15)
     inventorynumber.grid(row=0, column=1)
-    pagenumber = ttk.Combobox(MidPrintingDetails, values = [], textvariable=PAGENUMBER, font=('arial', 16), width=15)
+    pagenumber = ttk.Combobox(MidPrintingDetails, values = pagenumbers(), textvariable=PAGENUMBER, font=('arial', 16), width=15)
     pagenumber.grid(row=1, column=1)
     btn_add = Button(MidPrintingDetails, text="Print", font=('arial', 16), width=30, bg="#009ACD", command=PrintData)
     btn_add.grid(row=2, columnspan=2, pady=20)
-    
-def InventoryNumberSelection(event = None):
-    if(INVENTORYNUMBER.get()!=""):
-        PAGENUMBER.set(0)
-        Database(SECTION.get())
-        cursor.execute(f"SELECT PageNumber FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}'")
-        fetch = cursor.fetchall()
-        pagenumber['values'] = ["{}".format(data[0]) for data in fetch]
-        cursor.close()
-        conn.close()
+
+def pagenumbers():
+    Database(SECTION.get())
+    cursor.execute(f"SELECT PageNumber FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}'")
+    fetch = cursor.fetchall()
+    list = ["{}".format(data[0]) for data in fetch]
+    cursor.close()
+    conn.close()
+    return list
 
 def PrintData():
     Database(SECTION.get())
@@ -170,37 +168,40 @@ def PrintPageNumber():
     Element((280, 10), ("Helvetica", 8), key = "Quantity"),
     Element((360, 10), ("Helvetica", 8), key = "Type"),
     Element((440, 10), ("Helvetica", 8), key = "Balance")]))
+    #    cursor.execute("""CREATE TABLE IF NOT EXISTS InventTable (InventoryNumber TEXT, LedgerNumber TEXT,
+    #                  LedgerPageNumber TEXT, PageNumber INTEGER, ItemName TEXT, AttachedFiles TEXT,
+    #                  Quantity INTEGER, Balance INTEGER, ItemCost FLOAT, CRVNumber TEXT, RIVNumber TEXT,
+    #                  ItemType TEXT, CondemnedNumber TEXT,PRIMARY KEY (InventoryNumber, PageNumber))""")
     rpt.pageheader = Band([
-    Element((0, 0), ("Times-Bold", 10), text = "Ledger Number:"), 
-    Element((90, 0), ("Helvetica", 8), text = "{}".format(LEDGERNUMBER.get())),
-    Element((190, 0), ("Times-Bold", 10), text = "Ledger Page Number:"),
-    Element((290, 0), ("Helvetica", 8), text = "{}".format(LEDGERPAGENUMBER.get())),
-    Element((385, 0), ("Times-Bold", 10), text = "Page Number:"),
-    Element((470, 0), ("Helvetica", 8), text = "{}".format(PAGENUMBER.get())),
-    Element((0, 16), ("Times-Bold", 10), text = "Item name:"),
-    Element((90, 16), ("Helvetica", 8), text = "{}".format(fetch[4])),
-    Element((0, 32), ("Times-Bold", 10), text = "File attached:"),
-    Element((90, 32), ("Helvetica", 8), text = "{}".format(fetch[5])) if fetch[15] != "" else Element((90, 32), ("Helvetica", 8), text = "None"),
-    Element((0, 48), ("Times-Bold", 10), text = "Quantity:"),
-    Element((90, 48), ("Helvetica", 8), text = "{}".format(fetch[6])),
-    Element((190, 48), ("Times-Bold", 10), text = "Item cost:"),
-    Element((290, 48), ("Helvetica", 8), text = "Rs. {}".format(round(fetch[8],2))),
-    Element((385, 48), ("Times-Bold", 10), text = "Item type:"),
-    Element((470, 48), ("Helvetica", 8), text = "{}".format(fetch[11])),
+    Element((0, 0), ("Times-Bold", 10), text = "Ledger Page Number:"),
+    Element((100, 0), ("Helvetica", 8), text = "{}".format(fetch[2])),
+    Element((320, 0), ("Times-Bold", 10), text = "Inventory Page Number:"),
+    Element((450, 0), ("Helvetica", 8), text = "{}".format(fetch[3])),
+    Element((0, 16), ("Times-Bold", 10), text = "Ledger Number:"), 
+    Element((100, 16), ("Helvetica", 8), text = "{}".format(fetch[1])),
+    Element((0, 32), ("Times-Bold", 10), text = "Item name:"),
+    Element((100, 32), ("Helvetica", 8), text = "{}".format(fetch[4])),
+    Element((0, 48), ("Times-Bold", 10), text = "File attached:"),
+    Element((100, 48), ("Helvetica", 8), text = "{}".format(fetch[5])) if fetch[5] != "" else Element((100, 48), ("Helvetica", 8), text = "None"),
+    Element((0, 64), ("Times-Bold", 10), text = "Quantity:"),
+    Element((100, 64), ("Helvetica", 8), text = "{}".format(fetch[6])),
+    Element((210, 64), ("Times-Bold", 10), text = "Item cost:"),
+    Element((270, 64), ("Helvetica", 8), text = "Rs. {}".format(round(fetch[8],2))),
+    Element((385, 64), ("Times-Bold", 10), text = "Item type:"),
+    Element((450, 64), ("Helvetica", 8), text = "{}".format(fetch[11])),
     Element((0, 80), ("Times-Bold", 10), text = "CRV number:") if fetch[9] != "" else Element((0, 80), ("Times-Bold", 10), text = ""),
-    Element((90, 80), ("Helvetica", 8), text = "{}".format(fetch[9])) if fetch[9] != "" else Element((90, 80), ("Helvetica", 8), text = ""),
+    Element((100, 80), ("Helvetica", 8), text = "{}".format(fetch[9])) if fetch[9] != "" else Element((90, 80), ("Helvetica", 8), text = ""),
     Element((0, 96), ("Times-Bold", 10), text = "R/IV number:") if fetch[10] != "" else Element((0, 96), ("Times-Bold", 10), text = ""),
-    Element((90, 96), ("Helvetica", 8), text = "{}".format(fetch[10])) if fetch[10] != "" else Element((90, 96), ("Helvetica", 8), text = ""),
-    Element((0, 112), ("Times-Bold", 10), text = "Condemned number:") if fetch[15] != "" else Element((0, 112), ("Times-Bold", 10), text = ""),
-    Element((100, 112), ("Helvetica", 8), text = "{}".format(fetch[15])) if fetch[15] != "" else Element((90, 112), ("Helvetica", 8), text = ""),
+    Element((100, 96), ("Helvetica", 8), text = "{}".format(fetch[10])) if fetch[10] != "" else Element((90, 96), ("Helvetica", 8), text = ""),
+    Element((0, 112), ("Times-Bold", 10), text = "Condemned number:") if fetch[12] != "" else Element((0, 112), ("Times-Bold", 10), text = ""),
+    Element((100, 112), ("Helvetica", 8), text = "{}".format(fetch[12])) if fetch[12] != "" else Element((90, 112), ("Helvetica", 8), text = ""),
     Element((0, 128), ("Helvetica", 8), text = "Name"),
     Element((200, 128), ("Helvetica", 8), text = "Date"),
     Element((280, 128), ("Helvetica", 8), text = "Quantity"),
     Element((360, 128), ("Helvetica", 8), text = "Type"),
     Element((440, 128), ("Helvetica", 8), text = "Balance"),
     Rule((0, 141), 7.5*72, thickness = 1)])
-    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    canvas = Canvas("{}\\{}_{}.pdf".format(desktop_path.replace('\\','\\\\'),INVENTORYNUMBER.get(),PAGENUMBER.get()))
+    canvas = Canvas("{}_{}.pdf".format(INVENTORYNUMBER.get(),PAGENUMBER.get()))
     rpt.generate(canvas)
     canvas.save()
 
@@ -208,22 +209,21 @@ def PrintInventoryNumber():
     cursor.execute(f"SELECT * FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}'")
     columns = [col[0] for col in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    if(len(rows) == 0): rows = [{"ItemName":"-","PageNumber":"-","Quantity":"-"}]
     for i in range(0,len(rows)):
         if(len(rows[i]['ItemName'])>100): rows[i]['ItemName'] = rows[i]['ItemName'][:100]
     rpt = Report(datasource = rows, detailband = Band([
     Element((0, 10), ("Helvetica", 8), key = "ItemName"),
-    Element((200, 10), ("Helvetica", 8), key = "PageNumber"),
-    Element((280, 10), ("Helvetica", 8), key = "Quantity")]))
+    Element((320, 10), ("Helvetica", 8), key = "PageNumber"),
+    Element((420, 10), ("Helvetica", 8), key = "Quantity")]))
     rpt.pageheader = Band([
     Element((0, 0), ("Times-Bold", 10), text = "Inventory number:"),
     Element((100, 0), ("Helvetica", 8), text = "{}".format(INVENTORYNUMBER.get())),
     Element((0, 20), ("Helvetica", 8), text = "Item name"),
-    Element((200, 20), ("Helvetica", 8), text = "Page number"),
-    Element((280, 20), ("Helvetica", 8), text = "Quantity"),
-    Element((360, 20), ("Helvetica", 8), text = "Balance"),
+    Element((320, 20), ("Helvetica", 8), text = "Page number"),
+    Element((420, 20), ("Helvetica", 8), text = "Quantity"),
     Rule((0, 32), 7.5*72, thickness = 1)])
-    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    canvas = Canvas("{}\\{}.pdf".format(desktop_path.replace('\\','\\\\'),INVENTORYNUMBER.get()))
+    canvas = Canvas("{}_{}.pdf".format(SECTION.get(),INVENTORYNUMBER.get()))
     rpt.generate(canvas)
     canvas.save()
 
@@ -274,11 +274,11 @@ def ItemNewForm():
     lbl_itemtype = Label(MidItemNew, text="Item Type:", font=('arial', 12), bd=10)
     lbl_itemtype.grid(row=10, sticky=W)
     lbl_condemnednumber = Label(MidItemNew, text="Condemned number:", font=('arial', 12), bd=10)
-    lbl_condemnednumber.grid(row=12, sticky=W)
+    lbl_condemnednumber.grid(row=11, sticky=W)
     lbl_result = Label(MidItemNew, textvariable=RESULT, font=('arial', 8), bd=10, fg="red")
     lbl_result.grid(row=13, columnspan = 2)
 
-    inventorynumber = Entry(MidItemNew, textvariable = INVENTORYNUMBER, font=('arial', 12), width=15)
+    inventorynumber = Label(MidItemNew, textvariable = INVENTORYNUMBER, font=('arial', 12), width=15)
     inventorynumber.grid(row=0, column=1)
     ledgerpagenumber = Entry(MidItemNew, textvariable = LEDGERPAGENUMBER, font=('arial', 12), width=15)
     ledgerpagenumber.grid(row=1, column=1)
@@ -309,11 +309,15 @@ def ItemNew():
     Database(SECTION.get())
     LEDGERNUMBER.set(LEDGERNUMBER.get().strip())
     LEDGERPAGENUMBER.set(LEDGERPAGENUMBER.get().strip())
-    INVENTORYNUMBER.set(INVENTORYNUMBER.get().strip())
     if(LEDGERNUMBER.get()!="" and LEDGERPAGENUMBER.get()!="" and PAGENUMBER.get()!=None and PAGENUMBER.get()>0 and ITEMNAME.get()!="" 
-      and QUANTITY.get()!=None and QUANTITY.get()>0 and ITEMTYPE.get()!="" and INVENTORYNUMBER.get()!=""):
+      and QUANTITY.get()!=None and QUANTITY.get()>0 and ITEMTYPE.get()!=""):
+        cursor.execute(f"SELECT * FROM InventTable WHERE InventoryNumber = '{INVENTORYNUMBER.get()}' and PageNumber = {PAGENUMBER.get()}")
+        fetch = cursor.fetchone()
+        if fetch is not None:
+            RESULT.set("Item exists")
+            return
         cursor.execute("""INSERT INTO InventTable (InventoryNumber, LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, ItemType,
-        AttachedFiles, RIVNumber, CRVNumber, IsInstalled, CondemnedNumber) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        AttachedFiles, RIVNumber, CRVNumber, CondemnedNumber) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (INVENTORYNUMBER.get(), LEDGERNUMBER.get(), LEDGERPAGENUMBER.get(), PAGENUMBER.get(), ITEMNAME.get(), QUANTITY.get(), QUANTITY.get(),
         ITEMCOST.get(), ITEMTYPE.get(), ATTACHEDFILE.get(), RIVNUMBER.get(), CRVNUMBER.get(), CONDEMNEDNUMBER.get()))
         conn.commit()
@@ -747,7 +751,7 @@ def InventoryForm():
 def InventoryDisplayData(event = None):
     Database(SECTION.get())
     inventorytree.delete(*inventorytree.get_children())
-    cursor.execute(f"SELECT LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable")
+    cursor.execute(f"SELECT InventoryNumber, LedgerNumber, LedgerPageNumber, PageNumber, ItemName, Quantity, Balance, ItemCost, RIVNumber, CRVNumber, ItemType, AttachedFiles, CondemnedNumber FROM InventTable")
     fetch = cursor.fetchall()
     for data in fetch:
         inventorytree.insert('', 'end', values=(data))
@@ -764,13 +768,13 @@ def SectionForm():
     lbl_text.pack(fill=X)
     scrollbarx = Scrollbar(MidSectionForm, orient=HORIZONTAL)
     scrollbary = Scrollbar(MidSectionForm, orient=VERTICAL)
-    sectiontree = ttk.Treeview(MidSectionForm, columns=("Index","Section"), selectmode="extended", height=100, yscrollcommand=scrollbary.set, xscrollcommand=scrollbarx.set)
+    sectiontree = ttk.Treeview(MidSectionForm, columns=("Section","InventoryNumber"), selectmode="extended", height=100, yscrollcommand=scrollbary.set, xscrollcommand=scrollbarx.set)
     scrollbary.config(command=sectiontree.yview)
     scrollbary.pack(side=RIGHT, fill=Y)
     scrollbarx.config(command=sectiontree.xview)
     scrollbarx.pack(side=BOTTOM, fill=X)
-    sectiontree.heading('Index', text="Index",anchor=W)
     sectiontree.heading('Section', text="Section",anchor=W)
+    sectiontree.heading('InventoryNumber', text="InventoryNumber",anchor=W)
     sectiontree.column('#0', stretch=NO, minwidth=0, width=0)
     sectiontree.column('#1', stretch=NO, minwidth=0, width=100)
     sectiontree.column('#2', stretch=NO, minwidth=0, width=100)
@@ -780,7 +784,7 @@ def SectionForm():
 def SectionData(event = None):
     SectionSelectDatabase()
     sectiontree.delete(*sectiontree.get_children())
-    cursor.execute("SELECT * FROM SectionInfo")
+    cursor.execute("SELECT * FROM InventoryInfo")
     fetch = cursor.fetchall()
     for data in fetch:
         sectiontree.insert('', 'end', values=(data))
@@ -823,15 +827,16 @@ def InventoryDelete():
             conn.close()
 
 def setValues(selecteditem):
-    LEDGERNUMBER.set(selecteditem[0])
-    LEDGERPAGENUMBER.set(selecteditem[1])
-    PAGENUMBER.set(selecteditem[2])
-    ITEMNAME.set(selecteditem[3])
-    ITEMCOST.set(selecteditem[6])
-    RIVNUMBER.set(selecteditem[7])
-    CRVNUMBER.set(selecteditem[8])
-    ITEMTYPE.set(selecteditem[9])
-    CONDEMNEDNUMBER.set(selecteditem[13])
+    INVENTORYNUMBER.set(selecteditem[0])
+    LEDGERNUMBER.set(selecteditem[1])
+    LEDGERPAGENUMBER.set(selecteditem[2])
+    PAGENUMBER.set(selecteditem[3])
+    ITEMNAME.set(selecteditem[4])
+    ITEMCOST.set(selecteditem[7])
+    RIVNUMBER.set(selecteditem[8])
+    CRVNUMBER.set(selecteditem[9])
+    ITEMTYPE.set(selecteditem[10])
+    CONDEMNEDNUMBER.set(selecteditem[12])
 
 def InventoryEdit():
     if not inventorytree.selection():
@@ -859,50 +864,54 @@ def InventoryEdit():
         MidItemNew.pack(side=TOP, pady=10)
         lbl_text = Label(TopItemNew, text="Edit item", font=('arial', 14), width=600)
         lbl_text.pack(fill=X)
-        lbl_ledgernumber = Label(MidItemNew, text="Ledger:", font=('arial', 12), bd=10)
-        lbl_ledgernumber.grid(row=2, sticky=W)
+        lbl_inventorynumber = Label(MidItemNew, text="Inventory number:", font=('arial', 12), bd=10)
+        lbl_inventorynumber.grid(row=0, sticky=W)
+        lbl_ledgernumber = Label(MidItemNew, text="Ledger number:", font=('arial', 12), bd=10)
+        lbl_ledgernumber.grid(row=3, sticky=W)
         lbl_ledgerpagenumber = Label(MidItemNew, text="Ledger page number:", font=('arial', 12), bd=10)
-        lbl_ledgerpagenumber.grid(row=0, sticky=W)
+        lbl_ledgerpagenumber.grid(row=1, sticky=W)
         lbl_pagenumber = Label(MidItemNew, text="Inventory page number:", font=('arial', 12), bd=10)
-        lbl_pagenumber.grid(row=1, sticky=W)
+        lbl_pagenumber.grid(row=2, sticky=W)
         lbl_itemname = Label(MidItemNew, text="Item name:", font=('arial', 12), bd=10)
-        lbl_itemname.grid(row=4, sticky=W)
+        lbl_itemname.grid(row=5, sticky=W)
         lbl_attachfile = Label(MidItemNew, text="Attach file:", font=('arial', 12), bd=10)
-        lbl_attachfile.grid(row=5, sticky=W)
+        lbl_attachfile.grid(row=6, sticky=W)
         lbl_itemcost = Label(MidItemNew, text="Item cost:", font=('arial', 12), bd=10)
-        lbl_itemcost.grid(row=3, sticky=W)
+        lbl_itemcost.grid(row=4, sticky=W)
         lbl_rivnumber = Label(MidItemNew, text="R / IV number:", font=('arial', 12), bd=10)
-        lbl_rivnumber.grid(row=7, sticky=W)
+        lbl_rivnumber.grid(row=8, sticky=W)
         lbl_crvnumber = Label(MidItemNew, text="CRV number:", font=('arial', 12), bd=10)
-        lbl_crvnumber.grid(row=8, sticky=W)
+        lbl_crvnumber.grid(row=9, sticky=W)
         lbl_itemtype = Label(MidItemNew, text="Item Type:", font=('arial', 12), bd=10)
-        lbl_itemtype.grid(row=9, sticky=W)
+        lbl_itemtype.grid(row=10, sticky=W)
         lbl_condemnednumber = Label(MidItemNew, text="Condemned number:", font=('arial', 12), bd=10)
-        lbl_condemnednumber.grid(row=10, sticky=W)
+        lbl_condemnednumber.grid(row=11, sticky=W)
         lbl_result = Label(MidItemNew, textvariable=RESULT, font=('arial', 8), bd=10, fg="red")
-        lbl_result.grid(row=12, columnspan = 2)
+        lbl_result.grid(row=13, columnspan = 2)
+        inventorynumber = Label(MidItemNew, textvariable = INVENTORYNUMBER, font=('arial', 12))
+        inventorynumber.grid(row=0, column=1)
         ledgerpagenumber = Label(MidItemNew, textvariable = LEDGERPAGENUMBER, font=('arial', 12))
-        ledgerpagenumber.grid(row=0, column=1)
+        ledgerpagenumber.grid(row=1, column=1)
         pagenumber = Label(MidItemNew, textvariable = PAGENUMBER, font=('arial', 12))
-        pagenumber.grid(row=1, column=1)
+        pagenumber.grid(row=2, column=1)
         ledgernumber = Label(MidItemNew, textvariable = LEDGERNUMBER, font=('arial', 12))
-        ledgernumber.grid(row=2, column=1)
+        ledgernumber.grid(row=3, column=1)
         itemcost = Entry(MidItemNew, textvariable = ITEMCOST, font=('arial', 12), width=15)
-        itemcost.grid(row=3, column=1)
+        itemcost.grid(row=4, column=1)
         itemname = Entry(MidItemNew, textvariable = ITEMNAME, font=('arial', 12), width=15)
-        itemname.grid(row=4, column=1)
+        itemname.grid(row=5, column=1)
         btn_attachfile = Button(MidItemNew, text="Attach", font=('arial', 8), width=10, bg="#009ACD", command=AttachFile)
-        btn_attachfile.grid(row=5, column=1)
+        btn_attachfile.grid(row=6, column=1)
         rivnumber = Entry(MidItemNew, textvariable = RIVNUMBER, font=('arial', 12), width=15)
-        rivnumber.grid(row=7, column=1)
+        rivnumber.grid(row=8, column=1)
         crvnumber = Entry(MidItemNew, textvariable = CRVNUMBER, font=('arial', 12), width=15)
-        crvnumber.grid(row=8, column=1)
+        crvnumber.grid(row=9, column=1)
         itemtype = ttk.Combobox(MidItemNew, textvariable = ITEMTYPE, values = ["Consumable", "Non-Consumable", "NCF"], font=('arial', 12), width=15)
-        itemtype.grid(row=9, column=1)
+        itemtype.grid(row=10, column=1)
         condemnednumber = Entry(MidItemNew, textvariable = CONDEMNEDNUMBER, font=('arial', 12), width=15)
-        condemnednumber.grid(row=10, column=1)
+        condemnednumber.grid(row=11, column=1)
         btn_add = Button(MidItemNew, text="Update", font=('arial', 10), width=30, bg="#009ACD", command=ItemEdit)
-        btn_add.grid(row=11, columnspan=2, pady=10)
+        btn_add.grid(row=12, columnspan=2, pady=10)
 
 
 def ItemEdit():
@@ -1039,7 +1048,8 @@ def SectionSelectDatabase():
     global conn, cursor
     conn = sqlite3.connect("Sections.db")
     cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS SectionInfo (IndexId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, Section TEXT)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS SectionInfo (Section TEXT PRIMARY KEY)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS InventoryInfo (Section TEXT, InventoryNumber TEXT, PRIMARY KEY(Section, InventoryNumber))")
     conn.commit()
     
 def CreateNewSection():
@@ -1082,6 +1092,60 @@ def SectionNew():
     New_section.set("")
     RESULT.set("Created successfully")
 
+def CreateNewInventoryNumber():
+    global newinventory, New_inventory
+    newinventory = Toplevel()
+    newinventory.title("Inventory Management System / Create new section")
+    width =Home.winfo_screenwidth()/2
+    height = Home.winfo_screenheight()/2
+    screen_width = Home.winfo_screenwidth()
+    screen_height = Home.winfo_screenheight()
+    x = (screen_width/2) - (width/2)
+    y = (screen_height/2) - (height/2)
+    newinventory.geometry("%dx%d+%d+%d" % (width, height, x, y))
+    newinventory.resizable(0, 0)
+    TopNewInventory = Frame(newinventory, width=600, height=100, bd=1, relief=SOLID)
+    TopNewInventory.pack(side=TOP, pady=10)
+    MidNewInventory = Frame(newinventory, width=600)
+    MidNewInventory.pack(side=TOP, pady=10)
+    lbl_text = Label(TopNewInventory, text="New inventory", font=('arial', 14), width=600)
+    lbl_text.pack(fill=X)
+    lbl_section = Label(MidNewInventory, text="Section:", font=('arial', 12), bd=10)
+    lbl_section.grid(row=0, sticky=W)
+    lbl_inventorynumber = Label(MidNewInventory, text="Inventory number:", font=('arial', 12), bd=10)
+    lbl_inventorynumber.grid(row=1, sticky=W)
+    lbl_result = Label(MidNewInventory, textvariable=RESULT, font=('arial', 8), bd=10, fg="red")
+    lbl_result.grid(row=3, columnspan = 2)
+    New_inventory = StringVar()
+    section = Label(MidNewInventory, textvariable = SECTION, font=('arial', 12), width=15)
+    section.grid(row=0, column=1)
+    inventorynumber = Entry(MidNewInventory, textvariable = New_inventory, font=('arial', 12), width=15)
+    inventorynumber.grid(row=1, column=1)
+    btn_add = Button(MidNewInventory, text="Save", font=('arial', 10), width=30, bg="#009ACD", command=InventoryNew)
+    btn_add.grid(row=2, columnspan=2, pady=10)
+
+def InventoryNew():
+    SectionSelectDatabase()
+    if SECTION.get() is None or New_inventory.get() is None:
+        RESULT.set("Please fill all fields.")
+        return
+    cursor.execute(f"INSERT INTO InventoryInfo (Section, InventoryNumber) VALUES('{SECTION.get()}','{New_inventory.get()}')")
+    conn.commit()
+    cursor.close()
+    conn.close()
+    New_inventory.set("")
+    RESULT.set("Created successfully")
+
+def SetListOfInventoryNumber(event=None):
+    if(SECTION.get()!=""):
+        INVENTORYNUMBER.set("")
+        SectionSelectDatabase()
+        cursor.execute(f"SELECT InventoryNumber FROM InventoryInfo WHERE Section = '{SECTION.get()}'")
+        fetch = cursor.fetchall()
+        listofinventory['values'] = ["{}".format(data[0]) for data in fetch]
+        cursor.close()
+        conn.close()
+
 #Home page details
 Title = Frame(Home, bd=1, relief=SOLID)
 Title.pack(pady=10)
@@ -1103,6 +1167,7 @@ filemenu3.add_command(label="New item", command=ShowItemNew)
 filemenu3.add_command(label="Item", command=ShowInventoryView)
 filemenu4.add_command(label="Print item details", command=PrintInventoryDetails)
 filemenu5.add_command(label="New section", command=CreateNewSection)
+filemenu5.add_command(label="New inventory", command=CreateNewInventoryNumber)
 filemenu5.add_command(label="Sections", command=ViewSection)
 
 #Call section database 
@@ -1110,7 +1175,7 @@ SectionSelectDatabase()
 cursor.execute("SELECT Section FROM SectionInfo")
 fetch = cursor.fetchall()
 
-#Create a list and attach it to the radio button
+#Create a list and attach it to dropdown
 SectionList = ["{}".format(data[0]) for data in fetch]
 cursor.close()
 conn.close()
@@ -1126,7 +1191,13 @@ menubar.add_cascade(label="Section", menu=filemenu5)
 label_listofsections = Label(Home, text="Select section: ")
 label_listofsections.pack()
 listofsections = ttk.Combobox(Home, values=SectionList, textvariable=SECTION)
+listofsections.bind("<<ComboboxSelected>>", SetListOfInventoryNumber)
 listofsections.pack()
+
+label_listofinventory = Label(Home, text="Select inventory: ")
+label_listofinventory.pack()
+listofinventory = ttk.Combobox(Home, values=[], textvariable=INVENTORYNUMBER)
+listofinventory.pack()
 
 Home.config(menu=menubar)
 Home.config(bg="#6666ff")
